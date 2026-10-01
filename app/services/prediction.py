@@ -1,4 +1,5 @@
 import json
+import logging
 from functools import lru_cache
 from pathlib import Path
 
@@ -10,18 +11,32 @@ class ModelUnavailableError(Exception):
     pass
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+logger = logging.getLogger(__name__)
+
+
+def resolve_project_path(value):
+    path = Path(value).expanduser()
+    if not path.is_absolute():
+        path = PROJECT_ROOT / path
+    return path.resolve()
+
+
 @lru_cache(maxsize=2)
 def _load_model(model_path):
-    path = Path(model_path)
+    path = resolve_project_path(model_path)
     if not path.is_file():
+        logger.error("Configured prediction model artifact is missing: %s", path)
         raise ModelUnavailableError("The trained model is not installed yet. Follow the training guide to enable detection.")
     try:
         from tensorflow.keras.models import load_model
 
         model = load_model(path)
     except ImportError as error:
+        logger.error("TensorFlow is unavailable while loading model %s: %s", path, error)
         raise ModelUnavailableError("TensorFlow is not installed. Install the optional ML requirements to enable detection.") from error
     except Exception as error:
+        logger.exception("Failed to load configured prediction model %s", path)
         raise ModelUnavailableError("The selected model could not be loaded. Check the model file and try again.") from error
 
     if model.input_shape != (None, 224, 224, 3):
@@ -32,13 +47,27 @@ def _load_model(model_path):
 
 
 def _read_labels(labels_path, model):
+    path = resolve_project_path(labels_path)
     try:
-        labels = json.loads(Path(labels_path).read_text(encoding="utf-8"))
+        labels = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError, TypeError, json.JSONDecodeError) as error:
+        logger.error("Could not read prediction class labels at %s: %s", path, error)
         raise ModelUnavailableError("The model files could not be read. Check the class labels file and try again.") from error
-    if not isinstance(labels, list) or not labels or not all(isinstance(label, str) for label in labels):
+    if (
+        not isinstance(labels, list)
+        or not labels
+        or not all(isinstance(label, str) and label.strip() for label in labels)
+        or len(set(labels)) != len(labels)
+    ):
+        logger.error("Prediction class labels are empty, duplicated, or invalid: %s", path)
         raise ModelUnavailableError("The model class labels are invalid. Check the labels file and try again.")
     if len(labels) != model.output_shape[-1]:
+        logger.error(
+            "Prediction class count mismatch for %s: labels=%d model_outputs=%d",
+            path,
+            len(labels),
+            model.output_shape[-1],
+        )
         raise ModelUnavailableError("Model classes do not match the label file. Check the selected model and labels.")
     return labels
 
@@ -51,8 +80,10 @@ def validate_model_artifacts(model_path, labels_path):
 
         tf.keras.Model(model.inputs, [_last_spatial_tensor(model), model.output])
     except ImportError as error:
+        logger.error("TensorFlow is unavailable for model artifact validation: %s", error)
         raise ModelUnavailableError("TensorFlow is not installed. Install the optional ML requirements to enable detection.") from error
     except (TypeError, ValueError, ModelUnavailableError) as error:
+        logger.error("Prediction/Grad-CAM artifact validation failed for %s: %s", model_path, error)
         raise ModelUnavailableError("The selected model is not compatible with the prediction and Grad-CAM workflow.") from error
     return labels
 

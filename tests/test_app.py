@@ -1,10 +1,12 @@
 import os
 from io import BytesIO
+from pathlib import Path
 
 from PIL import Image
 
+from app import create_app
 from app.extensions import db
-from app.models import Detection, Disease, User
+from app.models import Detection, Disease, ModelVersion, User
 from app.routes.auth import _reset_serializer
 from tests.conftest import register
 
@@ -12,6 +14,54 @@ from tests.conftest import register
 def test_home_and_public_crop_guide_load(client):
     assert client.get("/").status_code == 200
     assert client.get("/diseases").status_code == 200
+
+
+def test_app_factory_resolves_relative_model_configuration_from_project_root(tmp_path):
+    project_root = Path(__file__).resolve().parents[1]
+    app = create_app(
+        {
+            "TESTING": True,
+            "SQLALCHEMY_DATABASE_URI": f"sqlite:///{tmp_path / 'paths.db'}",
+            "UPLOAD_FOLDER": str(tmp_path / "uploads"),
+            "MODEL_PATH": "models/crop_disease_model.keras",
+            "LABELS_PATH": "models/class_names.json",
+        }
+    )
+
+    assert Path(app.config["MODEL_PATH"]) == (project_root / "models/crop_disease_model.keras").resolve()
+    assert Path(app.config["LABELS_PATH"]) == (project_root / "models/class_names.json").resolve()
+
+
+def test_active_model_registry_paths_resolve_from_project_root(tmp_path):
+    project_root = Path(__file__).resolve().parents[1]
+    database_uri = f"sqlite:///{tmp_path / 'active-model.db'}"
+    config = {
+        "TESTING": True,
+        "SQLALCHEMY_DATABASE_URI": database_uri,
+        "UPLOAD_FOLDER": str(tmp_path / "uploads"),
+    }
+    app = create_app(config)
+    with app.app_context():
+        db.session.add(
+            ModelVersion(
+                name="MobileNetV2",
+                version="relative-path-test",
+                architecture="MobileNetV2",
+                model_path="models/experiments/mobilenetv2_transfer_v1/best_model.keras",
+                labels_path="models/experiments/mobilenetv2_transfer_v1/class_names.json",
+                metrics_json="{}",
+                is_active=True,
+            )
+        )
+        db.session.commit()
+
+    restarted_app = create_app(config)
+    assert Path(restarted_app.config["MODEL_PATH"]) == (
+        project_root / "models/experiments/mobilenetv2_transfer_v1/best_model.keras"
+    ).resolve()
+    assert Path(restarted_app.config["LABELS_PATH"]) == (
+        project_root / "models/experiments/mobilenetv2_transfer_v1/class_names.json"
+    ).resolve()
 
 
 def test_authenticated_navbar_keeps_links_without_a_collapsed_menu(client, app):
@@ -122,8 +172,11 @@ def test_model_unavailable_is_not_reported_as_a_prediction(client):
 
 def test_scan_result_renders_its_generated_gradcam(client, app, monkeypatch):
     register(client)
+    received_paths = {}
 
     def fake_predict(image_path, model_path, labels_path, heatmap_path):
+        received_paths["model"] = model_path
+        received_paths["labels"] = labels_path
         Image.new("RGB", (224, 224), color="red").save(heatmap_path, format="JPEG")
         return {"raw_label": "Tomato___Early_blight", "confidence": 0.87}
 
@@ -140,6 +193,10 @@ def test_scan_result_renders_its_generated_gradcam(client, app, monkeypatch):
 
     assert response.status_code == 200
     assert b"Grad-CAM" in response.data
+    assert received_paths == {
+        "model": app.config["MODEL_PATH"],
+        "labels": app.config["LABELS_PATH"],
+    }
     with app.app_context():
         record = Detection.query.one()
         original = app.config["UPLOAD_FOLDER"] + "/" + record.image_path

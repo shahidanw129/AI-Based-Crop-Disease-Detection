@@ -14,6 +14,7 @@ from app.extensions import csrf, db, login_manager, mail
 
 def create_app(test_config=None):
     load_dotenv()
+    from app.services.prediction import resolve_project_path
 
     is_vercel = os.getenv("VERCEL") == "1"
 
@@ -81,6 +82,9 @@ def create_app(test_config=None):
 
     if test_config:
         app.config.update(test_config)
+
+    app.config["MODEL_PATH"] = str(resolve_project_path(app.config["MODEL_PATH"]))
+    app.config["LABELS_PATH"] = str(resolve_project_path(app.config["LABELS_PATH"]))
 
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
@@ -238,13 +242,31 @@ def create_app(test_config=None):
 
         active_model = ModelVersion.query.filter_by(is_active=True).first()
 
-        if (
-            active_model
-            and os.path.isfile(active_model.model_path)
-            and os.path.isfile(active_model.labels_path)
-        ):
-            app.config["MODEL_PATH"] = active_model.model_path
-            app.config["LABELS_PATH"] = active_model.labels_path
+        if active_model:
+            app.config["MODEL_PATH"] = str(resolve_project_path(active_model.model_path))
+            app.config["LABELS_PATH"] = str(resolve_project_path(active_model.labels_path))
+            if not os.path.isfile(app.config["MODEL_PATH"]):
+                app.logger.error(
+                    "Active model registry entry %s points to a missing model artifact: %s",
+                    active_model.id,
+                    app.config["MODEL_PATH"],
+                )
+            if not os.path.isfile(app.config["LABELS_PATH"]):
+                app.logger.error(
+                    "Active model registry entry %s points to missing labels: %s",
+                    active_model.id,
+                    app.config["LABELS_PATH"],
+                )
+        elif not os.path.isfile(app.config["MODEL_PATH"]):
+            app.logger.error(
+                "Configured fallback model artifact is missing: %s",
+                app.config["MODEL_PATH"],
+            )
+        elif not os.path.isfile(app.config["LABELS_PATH"]):
+            app.logger.error(
+                "Configured fallback class labels are missing: %s",
+                app.config["LABELS_PATH"],
+            )
 
     return app
 

@@ -12,7 +12,7 @@ from flask_wtf.csrf import generate_csrf
 
 from app import admin_required
 from app.extensions import db, mail
-from app.services.prediction import ModelUnavailableError, validate_model_artifacts
+from app.services.prediction import ModelUnavailableError, resolve_project_path, validate_model_artifacts
 from app.models import (
     Consultation,
     Detection,
@@ -378,8 +378,8 @@ def register_model():
     name = request.form.get("name", "").strip()
     version = request.form.get("version", "").strip()
     architecture = request.form.get("architecture", "").strip()
-    model_path = os.path.abspath(request.form.get("model_path", "").strip())
-    labels_path = os.path.abspath(request.form.get("labels_path", "").strip())
+    model_path = str(resolve_project_path(request.form.get("model_path", "").strip()))
+    labels_path = str(resolve_project_path(request.form.get("labels_path", "").strip()))
     metrics_path = request.form.get("metrics_path", "").strip()
     try:
         metrics = json.loads(Path(metrics_path).read_text(encoding="utf-8")) if metrics_path else {}
@@ -526,8 +526,8 @@ def process_reminders_command():
 
 
 @features_bp.cli.command("register-model")
-@click.option("--model", "model_path_option", type=click.Path(exists=True, dir_okay=False))
-@click.option("--labels", "labels_path_option", type=click.Path(exists=True, dir_okay=False))
+@click.option("--model", "model_path_option", type=click.Path(dir_okay=False))
+@click.option("--labels", "labels_path_option", type=click.Path(dir_okay=False))
 @click.option("--metrics", "metrics_path_option", type=click.Path(exists=True, dir_okay=False))
 @click.option("--name", "name_option")
 @click.option("--version", "version_option")
@@ -543,8 +543,8 @@ def register_model_command(
     activate,
 ):
     """Register a validated model and its evaluation metrics."""
-    model_path = os.path.abspath(model_path_option or current_app.config["MODEL_PATH"])
-    labels_path = os.path.abspath(labels_path_option or current_app.config["LABELS_PATH"])
+    model_path = str(resolve_project_path(model_path_option or current_app.config["MODEL_PATH"]))
+    labels_path = str(resolve_project_path(labels_path_option or current_app.config["LABELS_PATH"]))
     if not os.path.isfile(model_path) or not os.path.isfile(labels_path):
         raise click.ClickException("The model or class labels file does not exist.")
     try:
