@@ -21,7 +21,7 @@ def create_app(test_config=None):
     if is_vercel:
         app = Flask(
             __name__,
-            instance_path="/tmp/crop_disease_instance",
+            instance_path=os.getenv("VERCEL_INSTANCE_PATH", "/tmp/crop_disease_instance"),
             instance_relative_config=True
         )
         upload_folder = "/tmp/crop_disease_uploads"
@@ -42,7 +42,11 @@ def create_app(test_config=None):
             f"sqlite:///{os.path.join(app.instance_path, 'smartfarming.db')}"
         ),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
-        MAX_CONTENT_LENGTH=8 * 1024 * 1024,
+        MAX_CONTENT_LENGTH=(
+            min(int(os.getenv("MAX_CONTENT_LENGTH_BYTES", str(8 * 1024 * 1024))), 4 * 1024 * 1024)
+            if is_vercel
+            else int(os.getenv("MAX_CONTENT_LENGTH_BYTES", str(8 * 1024 * 1024)))
+        ),
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=os.getenv("COOKIE_SECURE", "0") == "1",
@@ -242,27 +246,51 @@ def create_app(test_config=None):
 
         active_model = ModelVersion.query.filter_by(is_active=True).first()
 
+        if is_vercel:
+            for url_key, hash_key in (
+                ("MODEL_ARTIFACT_URL", "MODEL_ARTIFACT_SHA256"),
+                ("LABELS_ARTIFACT_URL", "LABELS_ARTIFACT_SHA256"),
+            ):
+                if os.getenv(url_key) and not os.getenv(hash_key):
+                    app.logger.error(
+                        "Vercel remote artifact source %s requires %s",
+                        url_key,
+                        hash_key,
+                    )
+
         if active_model:
             app.config["MODEL_PATH"] = str(resolve_project_path(active_model.model_path))
             app.config["LABELS_PATH"] = str(resolve_project_path(active_model.labels_path))
-            if not os.path.isfile(app.config["MODEL_PATH"]):
+            if (
+                not os.path.isfile(app.config["MODEL_PATH"])
+                and not os.getenv("MODEL_ARTIFACT_URL")
+            ):
                 app.logger.error(
                     "Active model registry entry %s points to a missing model artifact: %s",
                     active_model.id,
                     app.config["MODEL_PATH"],
                 )
-            if not os.path.isfile(app.config["LABELS_PATH"]):
+            if (
+                not os.path.isfile(app.config["LABELS_PATH"])
+                and not os.getenv("LABELS_ARTIFACT_URL")
+            ):
                 app.logger.error(
                     "Active model registry entry %s points to missing labels: %s",
                     active_model.id,
                     app.config["LABELS_PATH"],
                 )
-        elif not os.path.isfile(app.config["MODEL_PATH"]):
+        elif (
+            not os.path.isfile(app.config["MODEL_PATH"])
+            and not os.getenv("MODEL_ARTIFACT_URL")
+        ):
             app.logger.error(
                 "Configured fallback model artifact is missing: %s",
                 app.config["MODEL_PATH"],
             )
-        elif not os.path.isfile(app.config["LABELS_PATH"]):
+        elif (
+            not os.path.isfile(app.config["LABELS_PATH"])
+            and not os.getenv("LABELS_ARTIFACT_URL")
+        ):
             app.logger.error(
                 "Configured fallback class labels are missing: %s",
                 app.config["LABELS_PATH"],

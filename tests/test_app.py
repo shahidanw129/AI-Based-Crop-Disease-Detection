@@ -31,6 +31,48 @@ def test_app_factory_resolves_relative_model_configuration_from_project_root(tmp
     assert Path(app.config["MODEL_PATH"]) == (project_root / "models/crop_disease_model.keras").resolve()
     assert Path(app.config["LABELS_PATH"]) == (project_root / "models/class_names.json").resolve()
 
+def test_vercel_upload_limit_is_below_function_request_limit(tmp_path, monkeypatch):
+    monkeypatch.setenv("VERCEL", "1")
+    monkeypatch.setenv("VERCEL_INSTANCE_PATH", str(tmp_path / "vercel-instance"))
+    vercel_app = create_app(
+        {
+            "TESTING": True,
+            "SQLALCHEMY_DATABASE_URI": f"sqlite:///{tmp_path / 'vercel.db'}",
+            "UPLOAD_FOLDER": str(tmp_path / "vercel-uploads"),
+        }
+    )
+    monkeypatch.delenv("VERCEL")
+    local_app = create_app(
+        {
+            "TESTING": True,
+            "SQLALCHEMY_DATABASE_URI": f"sqlite:///{tmp_path / 'local.db'}",
+            "UPLOAD_FOLDER": str(tmp_path / "local-uploads"),
+        }
+    )
+
+    assert vercel_app.config["MAX_CONTENT_LENGTH"] == 4 * 1024 * 1024
+    assert local_app.config["MAX_CONTENT_LENGTH"] == 8 * 1024 * 1024
+
+
+def test_vercel_startup_logs_missing_remote_artifact_hashes(tmp_path, monkeypatch, caplog):
+    monkeypatch.setenv("VERCEL", "1")
+    monkeypatch.setenv("VERCEL_INSTANCE_PATH", str(tmp_path / "instance"))
+    monkeypatch.setenv("MODEL_ARTIFACT_URL", "https://models.example.test/model.keras")
+    monkeypatch.setenv("LABELS_ARTIFACT_URL", "https://models.example.test/labels.json")
+    monkeypatch.delenv("MODEL_ARTIFACT_SHA256", raising=False)
+    monkeypatch.delenv("LABELS_ARTIFACT_SHA256", raising=False)
+
+    create_app(
+        {
+            "TESTING": True,
+            "SQLALCHEMY_DATABASE_URI": f"sqlite:///{tmp_path / 'hashes.db'}",
+            "UPLOAD_FOLDER": str(tmp_path / "uploads"),
+        }
+    )
+
+    assert "MODEL_ARTIFACT_SHA256" in caplog.text
+    assert "LABELS_ARTIFACT_SHA256" in caplog.text
+
 
 def test_active_model_registry_paths_resolve_from_project_root(tmp_path):
     project_root = Path(__file__).resolve().parents[1]
