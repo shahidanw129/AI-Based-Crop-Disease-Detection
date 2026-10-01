@@ -1,3 +1,4 @@
+
 import os
 from functools import wraps
 from urllib.parse import urlsplit
@@ -13,13 +14,31 @@ from app.extensions import csrf, db, login_manager, mail
 
 def create_app(test_config=None):
     load_dotenv()
-    app = Flask(__name__, instance_relative_config=True)
+
+    is_vercel = os.getenv("VERCEL") == "1"
+
+    if is_vercel:
+        app = Flask(
+            __name__,
+            instance_path="/tmp/crop_disease_instance",
+            instance_relative_config=True
+        )
+        upload_folder = "/tmp/crop_disease_uploads"
+    else:
+        app = Flask(__name__, instance_relative_config=True)
+        upload_folder = os.path.join(app.root_path, "static", "uploads")
+
     os.makedirs(app.instance_path, exist_ok=True)
-    os.makedirs(os.path.join(app.root_path, "static", "uploads"), exist_ok=True)
+    os.makedirs(upload_folder, exist_ok=True)
+
     app.config.from_mapping(
-        SECRET_KEY=os.getenv("SECRET_KEY", "development-only-change-this-key"),
+        SECRET_KEY=os.getenv(
+            "SECRET_KEY",
+            "development-only-change-this-key"
+        ),
         SQLALCHEMY_DATABASE_URI=os.getenv(
-            "DATABASE_URL", f"sqlite:///{os.path.join(app.instance_path, 'smartfarming.db')}"
+            "DATABASE_URL",
+            f"sqlite:///{os.path.join(app.instance_path, 'smartfarming.db')}"
         ),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         MAX_CONTENT_LENGTH=8 * 1024 * 1024,
@@ -31,21 +50,45 @@ def create_app(test_config=None):
         MAIL_USE_TLS=os.getenv("MAIL_USE_TLS", "true").lower() == "true",
         MAIL_USERNAME=os.getenv("MAIL_USERNAME"),
         MAIL_PASSWORD=os.getenv("MAIL_PASSWORD"),
-        MAIL_DEFAULT_SENDER=os.getenv("MAIL_DEFAULT_SENDER", "Fieldnote AI <noreply@localhost>"),
-        UPLOAD_FOLDER=os.path.join(app.root_path, "static", "uploads"),
-        MODEL_PATH=os.getenv("MODEL_PATH", os.path.join(app.root_path, "..", "models", "crop_disease_model.keras")),
-        LABELS_PATH=os.getenv("LABELS_PATH", os.path.join(app.root_path, "..", "models", "class_names.json")),
-        WEATHER_TIMEOUT_SECONDS=int(os.getenv("WEATHER_TIMEOUT_SECONDS", "8")),
+        MAIL_DEFAULT_SENDER=os.getenv(
+            "MAIL_DEFAULT_SENDER",
+            "Fieldnote AI <noreply@localhost>"
+        ),
+        UPLOAD_FOLDER=upload_folder,
+        MODEL_PATH=os.getenv(
+            "MODEL_PATH",
+            os.path.join(
+                app.root_path,
+                "..",
+                "models",
+                "crop_disease_model.keras"
+            )
+        ),
+        LABELS_PATH=os.getenv(
+            "LABELS_PATH",
+            os.path.join(
+                app.root_path,
+                "..",
+                "models",
+                "class_names.json"
+            )
+        ),
+        WEATHER_TIMEOUT_SECONDS=int(
+            os.getenv("WEATHER_TIMEOUT_SECONDS", "8")
+        ),
         DEBUG=os.getenv("FLASK_DEBUG", "0") == "1",
     )
+
     if test_config:
         app.config.update(test_config)
+
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
     db.init_app(app)
     login_manager.init_app(app)
     csrf.init_app(app)
     mail.init_app(app)
+
     login_manager.login_view = "auth.login"
     login_manager.login_message = "Please sign in to open that page."
     login_manager.login_message_category = "info"
@@ -75,7 +118,10 @@ def create_app(test_config=None):
         from app.services.i18n import translate
 
         language = session.get("language", "en")
-        return {"language": language, "tr": lambda message: translate(message, language)}
+        return {
+            "language": language,
+            "tr": lambda message: translate(message, language)
+        }
 
     @app.errorhandler(404)
     def not_found(_error):
@@ -93,6 +139,7 @@ def create_app(test_config=None):
     def init_db_command():
         """Create tables and insert the starter disease and tip catalog."""
         db.create_all()
+
         starter_diseases = [
             ("Tomato", "Tomato___healthy"),
             ("Tomato", "Tomato___Early_blight"),
@@ -104,26 +151,62 @@ def create_app(test_config=None):
             ("Corn", "Corn_(maize)___Common_rust_"),
             ("Corn", "Corn_(maize)___Northern_Leaf_Blight"),
         ]
+
         for crop_name, name in starter_diseases:
             if not Disease.query.filter_by(name=name).first():
                 db.session.add(
                     Disease(
                         crop_name=crop_name,
                         name=name,
-                        symptoms="Typical visible signs vary by crop and local conditions. Confirm with an agriculture expert.",
-                        prevention="Use clean planting material, monitor crops regularly, remove severely affected debris safely, and follow local extension advice.",
+                        symptoms=(
+                            "Typical visible signs vary by crop and local "
+                            "conditions. Confirm with an agriculture expert."
+                        ),
+                        prevention=(
+                            "Use clean planting material, monitor crops "
+                            "regularly, remove severely affected debris "
+                            "safely, and follow local extension advice."
+                        ),
                     )
                 )
+
         if not FarmingTip.query.first():
             db.session.add_all(
                 [
-                    FarmingTip(crop_name="All crops", title="Scout early", body="Inspect several plants across the field each week and note any new spots, wilting, or colour changes."),
-                    FarmingTip(crop_name="All crops", title="Keep useful records", body="Record planting dates, rainfall, irrigation, and observations to make seasonal decisions easier."),
-                    FarmingTip(crop_name="All crops", title="Use water thoughtfully", body="Check soil moisture and local conditions before irrigation; avoid waterlogging where the crop is sensitive."),
+                    FarmingTip(
+                        crop_name="All crops",
+                        title="Scout early",
+                        body=(
+                            "Inspect several plants across the field each "
+                            "week and note any new spots, wilting, or "
+                            "colour changes."
+                        )
+                    ),
+                    FarmingTip(
+                        crop_name="All crops",
+                        title="Keep useful records",
+                        body=(
+                            "Record planting dates, rainfall, irrigation, "
+                            "and observations to make seasonal decisions "
+                            "easier."
+                        )
+                    ),
+                    FarmingTip(
+                        crop_name="All crops",
+                        title="Use water thoughtfully",
+                        body=(
+                            "Check soil moisture and local conditions "
+                            "before irrigation; avoid waterlogging where "
+                            "the crop is sensitive."
+                        )
+                    ),
                 ]
             )
+
         db.session.commit()
-        click.echo("Database is ready. Create an administrator with: flask create-admin")
+        click.echo(
+            "Database is ready. Create an administrator with: flask create-admin"
+        )
 
     @app.cli.command("create-admin")
     @click.option("--name", prompt=True)
@@ -134,17 +217,32 @@ def create_app(test_config=None):
         from app.models import User
 
         if User.query.filter_by(email=email.lower().strip()).first():
-            raise click.ClickException("An account with that email already exists.")
-        admin = User(name=name.strip(), email=email.lower().strip(), role="admin")
+            raise click.ClickException(
+                "An account with that email already exists."
+            )
+
+        admin = User(
+            name=name.strip(),
+            email=email.lower().strip(),
+            role="admin"
+        )
         admin.set_password(password)
+
         db.session.add(admin)
         db.session.commit()
+
         click.echo("Administrator account created.")
 
     with app.app_context():
         db.create_all()
+
         active_model = ModelVersion.query.filter_by(is_active=True).first()
-        if active_model and os.path.isfile(active_model.model_path) and os.path.isfile(active_model.labels_path):
+
+        if (
+            active_model
+            and os.path.isfile(active_model.model_path)
+            and os.path.isfile(active_model.labels_path)
+        ):
             app.config["MODEL_PATH"] = active_model.model_path
             app.config["LABELS_PATH"] = active_model.labels_path
 
