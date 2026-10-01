@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block title %}Your profile{% endblock %}
+{% block content %}
+<section class="page-wrap subpage narrow-page"><p class="eyebrow eyebrow-green">Fieldnote / Account</p><h1>Your profile</h1><p class="muted">Update the details used on your field dashboard.</p><form method="post" class="form-stack profile-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label>Name<input name="name" value="{{ current_user.name }}" minlength="2" maxlength="100" required></label><label>Email address<input value="{{ current_user.email }}" disabled><span class="label-note">Email changes are not enabled in this project build.</span></label><label>Home city <span class="label-note">Optional, used to pre-fill weather</span><input name="city" value="{{ current_user.city }}" maxlength="100"></label><button class="button button-dark" type="submit">Save profile</button></form><p class="profile-meta">Member since {{ current_user.created_at.strftime('%d %B %Y') }}</p></section>
+{% endblock %}

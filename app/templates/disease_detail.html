@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block title %}{{ disease.name.replace('_', ' ') }}{% endblock %}
+{% block content %}
+<section class="page-wrap subpage detail-page"><a class="text-link" href="{{ url_for('main.diseases') }}">← {{ tr('Crop guide') }}</a><p class="eyebrow eyebrow-green detail-eyebrow">{{ tr(disease.crop_name) }} / Field reference</p><h1>{{ tr(disease.name.replace('___', ' / ').replace('__', ' / ').replace('_', ' ')) }}</h1><div class="reference-columns"><article><p class="eyebrow eyebrow-green">Visible signs</p><p>{{ tr(disease.symptoms) }}</p></article><article><p class="eyebrow eyebrow-green">General prevention</p><p>{{ tr(disease.prevention) }}</p></article></div><p class="safety-line">Reference information is general, not a diagnosis or treatment recommendation. Confirm concerns with a qualified local agriculture expert.</p></section>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Crop health, in focus{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="hero-copy">
+    <p class="eyebrow"><span class="live-dot"></span> A field companion for curious growers</p>
+    <h1>Read the leaf.<br><em>Care for the field.</em></h1>
+    <p class="hero-intro">Photograph a crop leaf, review an AI screening result, and keep your observations together season after season.</p>
+    <div class="hero-actions"><a class="button button-light" href="{{ url_for('auth.register') }}">Start a field log <span aria-hidden="true">↗</span></a><a class="text-link text-link-light" href="{{ url_for('main.diseases') }}">Explore crop guide <span aria-hidden="true">→</span></a></div>
+    <p class="hero-note">A screening aid, not a replacement for an agriculture expert.</p>
+  </div>
+  <div class="hero-stamp"><span>OBSERVE</span><span class="stamp-line"></span><span>LEARN</span><span class="stamp-line"></span><span>GROW</span></div>
+</section>
+<section class="home-intro page-wrap">
+  <div><p class="eyebrow eyebrow-green">A clearer view, one scan at a time</p><h2>Useful signals.<br><em>Grounded decisions.</em></h2></div>
+  <p class="intro-copy">Fieldnote brings leaf screening, disease references, local weather, and your scan history into one calm workspace. The model reports what it recognizes and how certain it is.</p>
+</section>
+<section class="feature-strip page-wrap">
+  <article class="feature-item"><span class="feature-number">01</span><h3>Scan a leaf</h3><p>Upload a clear JPG or PNG. The image is checked before the model sees it.</p></article>
+  <article class="feature-item"><span class="feature-number">02</span><h3>Review the signal</h3><p>See the predicted class and confidence, with context from the crop guide.</p></article>
+  <article class="feature-item"><span class="feature-number">03</span><h3>Keep the record</h3><p>Return to past observations or download an individual scan report.</p></article>
+</section>
+<section class="home-bottom"><div class="page-wrap bottom-inner"><p class="eyebrow">Designed for a thoughtful first response</p><h2>Not sure what you are seeing?<br><em>Start with observation.</em></h2><a class="button button-outline" href="{{ url_for('main.diseases') }}">Open the crop guide <span aria-hidden="true">↗</span></a></div></section>
+{% endblock %}

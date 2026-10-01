@@ -1,0 +1,59 @@
+.env
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+instance/*.db
+static/uploads/*
+!static/uploads/.gitkeep
+dataset/**
+!dataset/README.md
+models/*.keras
+models/class_names.json
+models/metrics.json
+models/*.png
+*.log
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Virtual environments
+venv/
+.venv/
+.venv-*/
+env/
+
+# Python cache and test files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local databases and instance data
+instance/
+*.db
+*.sqlite
+*.sqlite3
+
+# User uploads and private datasets
+static/uploads/*
+!static/uploads/.gitkeep
+/app/static/uploads/*
+!/app/static/uploads/.gitkeep
+dataset/**
+!dataset/README.md
+
+# Trained models and generated evaluation files
+models/**/*.keras
+models/**/*.h5
+models/**/*.weights.h5
+models/**/*.png
+models/**/*.jpg
+models/**/*.json
+
+# Logs and local settings
+*.log
+.vscode/

@@ -1,0 +1,50 @@
+{% extends "admin/monitoring.html" %}
+{% block content %}
+{{ super() }}
+<section class="page-wrap subpage admin-page">
+  <section class="admin-section model-compare">
+    <p class="eyebrow eyebrow-green">Selected model</p>
+    <h2>Currently serving</h2>
+    <p><code class="model-path">{{ active_model_path }}</code></p>
+    <p class="safety-line">Model confidence is not a diagnosis. Evaluation results are dataset-specific and do not establish field performance. Potato healthy has only 23 test samples.</p>
+  </section>
+  <section class="admin-section model-compare">
+    <p class="eyebrow eyebrow-green">Evaluation detail</p>
+    <h2>Per-class held-out test metrics</h2>
+    {% for item in versions %}
+      {% set report = item.metrics.get('classification_report', {}) %}
+      {% if report %}
+        <details class="model-version-detail">
+          <summary>{{ item.version.name }} · {{ item.version.version }}{{ ' · Active' if item.version.is_active else '' }}</summary>
+          {% set macro = report.get('macro avg', {}) %}
+          {% set weighted = report.get('weighted avg', {}) %}
+          <p>Test accuracy: {{ '%.2f'|format(item.metrics.get('test_accuracy', 0) * 100) }}%. Macro precision / recall / F1: {{ '%.2f'|format(macro.get('precision', 0) * 100) }}% / {{ '%.2f'|format(macro.get('recall', 0) * 100) }}% / {{ '%.2f'|format(macro.get('f1-score', 0) * 100) }}%. Weighted precision / recall / F1: {{ '%.2f'|format(weighted.get('precision', 0) * 100) }}% / {{ '%.2f'|format(weighted.get('recall', 0) * 100) }}% / {{ '%.2f'|format(weighted.get('f1-score', 0) * 100) }}%.</p>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr><th>Class</th><th>Precision</th><th>Recall</th><th>F1</th><th>Support</th></tr>
+              </thead>
+              <tbody>
+                {% for class_name, scores in report.items() %}
+                  {% if '___' in class_name %}
+                    <tr>
+                      <td>{{ class_name.replace('___', ' / ').replace('__', ' / ').replace('_', ' ') }}</td>
+                      <td>{{ '%.1f'|format(scores.get('precision', 0) * 100) }}%</td>
+                      <td>{{ '%.1f'|format(scores.get('recall', 0) * 100) }}%</td>
+                      <td>{{ '%.1f'|format(scores.get('f1-score', 0) * 100) }}%</td>
+                      <td>{{ scores.get('support', 0)|int }}</td>
+                    </tr>
+                  {% endif %}
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <p class="muted">See the model row above for its confusion matrix when available.</p>
+        </details>
+      {% endif %}
+    {% else %}
+      <p class="muted">No evaluated model versions are registered.</p>
+    {% endfor %}
+  </section>
+</section>
+{% endblock %}

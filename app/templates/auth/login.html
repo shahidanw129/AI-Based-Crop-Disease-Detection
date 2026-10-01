@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+<section class="auth-layout"><div class="auth-aside"><p class="eyebrow">Your field, in focus</p><h1>Welcome<br><em>back.</em></h1><p>Pick up where your last field observation left off.</p></div><div class="auth-panel"><p class="eyebrow eyebrow-green">Fieldnote account</p><h2>Sign in</h2><form method="post" class="form-stack"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label>Email address<input type="email" name="email" autocomplete="email" maxlength="255" required></label><label>Password<input type="password" name="password" autocomplete="current-password" required></label><label class="check-label"><input type="checkbox" name="remember"> Keep me signed in</label><button class="button button-dark" type="submit">Sign in <span aria-hidden="true">↗</span></button></form><p class="form-foot"><a href="{{ url_for('auth.forgot_password') }}">Forgot your password?</a></p><p class="form-foot">New to Fieldnote? <a href="{{ url_for('auth.register') }}">Create an account</a></p></div></section>
+{% endblock %}

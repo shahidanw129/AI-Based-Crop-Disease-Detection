@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#173d2b">
+  <title>Offline fieldbook · Fieldnote</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <header class="site-header"><a class="brand" href="/"><span class="brand-mark">F</span><span>fieldnote<span class="brand-ai"> / AI</span></span></a><span class="offline-badge">Offline mode</span></header>
+  <main class="page-wrap subpage offline-page">
+    <p class="eyebrow eyebrow-green">On-device fieldbook</p>
+    <h1>Work with the<br><em>notes you saved.</em></h1>
+    <p id="offline-status" class="muted" aria-live="polite">Your saved scans, report files, and field tips are stored on this browser only.</p>
+    <section class="offline-actions"><a class="button button-outline" href="/notifications">Sign in to save fieldbook data</a><button class="button button-dark" id="sync-queued-reminders" type="button">Sync queued reminders ↗</button></section>
+    <section class="offline-content"><div class="section-title"><div><p class="eyebrow eyebrow-green">Saved on this device</p><h2>Scan history & reports</h2></div></div><div id="offline-scans" class="offline-list"><p class="muted">No offline fieldbook has been saved in this browser yet.</p></div></section>
+    <section class="offline-content"><div class="section-title"><div><p class="eyebrow eyebrow-green">Reference notes</p><h2>Saved farming tips</h2></div></div><div id="offline-tips" class="offline-list"><p class="muted">Save a fieldbook while online to keep your latest tips here.</p></div></section>
+    <section class="offline-content"><div class="section-title"><div><p class="eyebrow eyebrow-green">Queue</p><h2>Reminder to sync later</h2></div></div><form id="offline-reminder-form" class="form-stack offline-reminder-form"><label>Task<input name="title" maxlength="140" required></label><label>Notes<textarea name="body" maxlength="1000" rows="2"></textarea></label><label>Due date and time<input name="due_at" type="datetime-local" required></label><button class="button button-dark" type="submit">Save on this device</button></form></section>
+    <p class="safety-line">Offline leaf prediction is not available. Scans need the server and trained model. Queued reminders sync after reconnecting with the same signed-in account. Avoid using a shared device for private offline reports.</p>
+  </main>
+  <script src="/static/js/offline.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "Fieldnote AI Smart Farming",
+  "short_name": "Fieldnote",
+  "description": "A private fieldbook for crop observations and farm reminders.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f4ed",
+  "theme_color": "#173d2b",
+  "icons": [
+    {
+      "src": "/static/images/pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
