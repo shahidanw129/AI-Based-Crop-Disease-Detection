@@ -1,8 +1,12 @@
+import os
+
+# Sabse pehle Legacy Keras enforce karein (TensorFlow / Keras import hone se pehle)
+os.environ["TF_USE_LEGACY_KERAS"] = "1"
+
 import gc
 import json
 import hashlib
 import logging
-import os
 import tempfile
 import threading
 import uuid
@@ -149,13 +153,17 @@ def _load_model(model_path):
         logger.error("Configured prediction model artifact is missing: %s", path)
         raise ModelUnavailableError("The trained model is not installed yet. Follow the training guide to enable detection.")
     try:
-        from tensorflow.keras.models import load_model
+        try:
+            import tf_keras as keras
+            load_fn = keras.models.load_model
+        except ImportError:
+            from tensorflow.keras.models import load_model as load_fn
 
         # Keras 3 / Deserialization Mismatch ko bypass karne ke liye compile=False aur safe_mode=False
         try:
-            model = load_model(path, compile=False, safe_mode=False)
+            model = load_fn(path, compile=False, safe_mode=False)
         except TypeError:
-            model = load_model(path, compile=False)
+            model = load_fn(path, compile=False)
     except ImportError as error:
         logger.error("TensorFlow is unavailable while loading model %s: %s", path, error)
         raise ModelUnavailableError("TensorFlow is not installed. Install the optional ML requirements to enable detection.") from error
