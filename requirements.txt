@@ -4,6 +4,9 @@ Flask-SQLAlchemy==3.1.1
 Flask-WTF==1.2.1
 WTForms==3.1.2
 Flask-Migrate==4.0.7
+Flask-Mail==0.9.1
+Flask-Bcrypt==1.0.1
+Flask-CORS==4.0.1
 gunicorn==23.0.0
 tensorflow==2.15.0
 numpy==1.26.4
